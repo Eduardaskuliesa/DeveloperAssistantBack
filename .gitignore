@@ -9,3 +9,5 @@ coverage
 *.log
 *.tsbuildinfo
 *.tgz
+*node_modules
+.bin

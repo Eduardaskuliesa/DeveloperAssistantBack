@@ -33,7 +33,7 @@ const config = {
     port: parseInt(process.env.REDIS_PORT || "6379"),
   },
   convex: {
-    url: process.env.CONVEX_URL || "http://localhost:3000",
+    url: process.env.CONVEX_SITE_URL,
   },
   googleGemini: {
     apiKey: process.env.GOOGLE_GEMINI_API_KEY || "",

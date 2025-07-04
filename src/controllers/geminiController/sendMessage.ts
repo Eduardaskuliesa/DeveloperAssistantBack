@@ -2,6 +2,8 @@ import { RequestHandler, Request, Response } from "express";
 import logger from "../../utils/logger";
 import { activeChatSessions } from "./createChat";
 import { Chat } from "@google/genai";
+import axios from "axios";
+import config from "../../config";
 
 export const sendMessage: RequestHandler = async (
   req: Request,
@@ -23,21 +25,34 @@ export const sendMessage: RequestHandler = async (
       });
       return;
     }
-    const response = await chat.sendMessage({
+
+    const stream = await chat.sendMessageStream({
       message: message,
     });
 
-    const messageResponse = response?.candidates[0]?.content?.parts[0]?.text;
-    const tokens = response.usageMetadata?.totalTokenCount;
-    const cachedTokens = response.usageMetadata?.cacheTokensDetails;
+    let fullResponse = "";
+    let usageMetadata = null;
 
-    console.log(JSON.stringify(response, null, 2), "Response from Google AI");
+    for await (const chunk of stream) {
+      const text = chunk.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      fullResponse += text;
+      if (chunk.usageMetadata) {
+        usageMetadata = chunk.usageMetadata;
+      }
 
-    res.status(200).json({
-      message: messageResponse,
-      tokens: tokens,
-      cachedTokens: cachedTokens,
-    });
+      res.write(text);
+    }
+
+    res.write(`\n\n---METADATA---\n`);
+    res.write(
+      JSON.stringify({
+        tokens: usageMetadata?.totalTokenCount,
+        cachedTokens: usageMetadata?.cacheTokensDetails,
+        fullMessage: fullResponse,
+      })
+    );
+
+    res.end();
   } catch (error) {
     logger.error("Error sending message:", error);
     res.status(500).json({
